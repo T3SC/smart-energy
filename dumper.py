@@ -5,8 +5,10 @@
 @description: A multi-threading supported script to retrieve sensor data from Siemens Navigator.
 """
 
-import thread,time
+import time
+from threading import Thread
 import base64, urllib2, json, requests
+import pandas as pd
 
 
 """
@@ -29,21 +31,43 @@ meter_id |  room               |    sensor_type
 
 
 def url_builder(base_url,meter_id,utc_start_timestamp,utc_end_timestamp):
-    return base_url+meter_id+"/readings?utcStartTimestamp="\
+    return base_url+"/meter/"+meter_id+"/readings?utcStartTimestamp="\
            +utc_start_timestamp+"&utcEndTimestamp="+utc_end_timestamp
 
-def fetch_data(url,meter_id):
+def fetch_data(thread_name, base_url, url, meter_id):
 
+    print thread_name
     username = "AkhtarTU"
     password = "BQYQELn7$!9vN]=0"
     b64 = base64.b64encode(username + ":" + password)
     token = "Basic " + b64
-    print token
-    print url
+
     r = requests.get(url,headers={"Authorization":token})
     j = json.loads(str(r._content))
-    print j['items'][0]
-    print "Hello Word"
+
+    page = 0
+    counter = 0
+    df = pd.DataFrame(columns=('utc_org_rec_time','value'))
+
+    while True:
+        print "***********",thread_name
+        print "***********Page Number", page
+        for items in j['items']:
+            #print items['value']
+            df.loc[counter] = [items['utcOrgRectime'],items['value']]
+            counter +=1
+        f = list(df)
+        if j['nextPage'] == None:
+            break
+        url = base_url + str(j['nextPage'])
+        r = requests.get(url, headers={"Authorization": token})
+        j = json.loads(str(r._content))
+
+        page += 1
+
+    df.to_csv('data/sample/' + thread_name+'_'+meter_id+ '.csv', index=False)
+    print "Total Values Fetched", counter
+
 
 def main():
 
@@ -67,14 +91,19 @@ def main():
                      "1710873":"presence_information",
                      "1710870":"exhaust_air_temperature"}
 
-    base_url = "https://eadvantage.siemens.com/remote/release/meter/"
-    utc_start_timestamp = "05/20/2017%2011:00:00"
+    base_url = "https://eadvantage.siemens.com/remote/release"
+    utc_start_timestamp = "04/20/2017%2011:00:00"
     utc_end_timestamp = "05/20/2017%2011:59:59"
+    thread_list = []
 
-    for meter_id in meter_id_dict:
-        url = url_builder(base_url,meter_id,utc_start_timestamp,utc_end_timestamp)
-        fetch_data(url,meter_id)
-        exit(0)
+    for key,value in meter_id_dict.iteritems():
+        url = url_builder(base_url, key, utc_start_timestamp, utc_end_timestamp)
+        t = Thread(target=fetch_data, args=(value, base_url, url, key))
+        t.start()
+        thread_list.append(t)
+
+    for t in thread_list:
+        t.join()
 
     print "--- %s Minutes ---" % ((time.time() - start_time) / 60)
 
