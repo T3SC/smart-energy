@@ -6,6 +6,7 @@
 """
 
 import time
+import datetime
 from threading import Thread
 import base64, urllib2, json, requests
 import pandas as pd
@@ -30,11 +31,11 @@ meter_id |  room               |    sensor_type
 """
 
 
-def url_builder(base_url,meter_id,utc_start_timestamp,utc_end_timestamp):
+def url_builder(base_url,meter_id, ts):
     return base_url+"/meter/"+meter_id+"/readings?utcStartTimestamp="\
-           +utc_start_timestamp+"&utcEndTimestamp="+utc_end_timestamp
+           +ts[0]+"&utcEndTimestamp="+ts[1]
 
-def fetch_data(thread_name, base_url, url, meter_id):
+def fetch_data(thread_name, base_url, url, meter_id, ts):
 
     print thread_name
     username = "AkhtarTU"
@@ -48,30 +49,44 @@ def fetch_data(thread_name, base_url, url, meter_id):
     page = 0
     counter = 0
     df = pd.DataFrame(columns=('utc_org_rec_time','value'))
+    new_request = False
 
     while True:
-        print "***********",thread_name
-        print "***********Page Number", page
+
+        print "***",str(thread_name)+"-"+str(page)
+
         for items in j['items']:
-            #print items['value']
             df.loc[counter] = [items['utcOrgRectime'],items['value']]
-            counter +=1
-        f = list(df)
+            counter += 1
+
         if j['nextPage'] == None:
-            break
-        url = base_url + str(j['nextPage'])
-        r = requests.get(url, headers={"Authorization": token})
-        j = json.loads(str(r._content))
+            ts_end = ts[1].replace("%20", " ")
+            time_last = datetime.datetime.strptime(str(df.iloc[len(df) - 1]['utc_org_rec_time']), "%m/%d/%Y %I:%M:%S %p")
+            time_end = datetime.datetime.strptime(ts_end, "%m/%d/%Y %H:%M:%S") - datetime.timedelta(minutes=6)
+            if time_end > time_last:
+                new_request = True
+                time_start = time_last.strftime("%m/%d/%Y %H:%M:%S")
+                time_start = time_start.replace(" ","%20")
+
+                url = url_builder(base_url,meter_id,(time_start,ts[1]))
+                r = requests.get(url, headers={"Authorization": token})
+                j = json.loads(str(r._content))
+            else:
+                break
+
+        if new_request == False:
+            url = base_url + str(j['nextPage'])
+            r = requests.get(url, headers={"Authorization": token})
+            j = json.loads(str(r._content))
 
         page += 1
+        new_request = False
 
     df.to_csv('data/sample/' + thread_name+'_'+meter_id+ '.csv', index=False)
     print "Total Values Fetched", counter
 
 
 def main():
-
-
 
     """
     https://eadvantage.siemens.com/remote/release/meter/
@@ -92,13 +107,12 @@ def main():
                      "1710870":"exhaust_air_temperature"}
 
     base_url = "https://eadvantage.siemens.com/remote/release"
-    utc_start_timestamp = "04/20/2017%2011:00:00"
-    utc_end_timestamp = "05/20/2017%2011:59:59"
-    thread_list = []
+    ts = ("03/01/2017%2011:00:00", "06/23/2017%2023:59:59")
 
+    thread_list = []
     for key,value in meter_id_dict.iteritems():
-        url = url_builder(base_url, key, utc_start_timestamp, utc_end_timestamp)
-        t = Thread(target=fetch_data, args=(value, base_url, url, key))
+        url = url_builder(base_url, key, ts)
+        t = Thread(target=fetch_data, args=(value, base_url, url, key, ts))
         t.start()
         thread_list.append(t)
 
