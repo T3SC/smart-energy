@@ -8,50 +8,76 @@
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import time, datetime
 from os import listdir
 from os import path
 
 def read_file():
 
-    p = str(path.dirname(path.abspath(__file__)))+"/data/sample/"
-    files = [f for f in listdir(p) if path.isfile(path.join(p,f))]
+    p = str(path.dirname(path.abspath("__file__"))) + "/data/sample/"
+    files = [f for f in listdir(p) if path.isfile(path.join(p, f))]
     cols = ['utc_org_rec_time']
     cols.extend([x.split('.')[0] for x in files])
-
     data = pd.DataFrame()
 
     for file in files:
-        print file
         temp = pd.read_csv("data/sample/"+file)
-        data = pd.concat((data,temp[['value']]),axis=1)
+        temp.columns = ['time','value']
+        temp['time'] = pd.to_datetime(temp['time'])
+        temp['time'] = pd.DatetimeIndex(temp['time'])
+        temp = missing_values_filler(file, temp)
+        data = pd.concat((data, temp[['value']]), axis=1)
 
-    data = pd.concat((temp[['utc_org_rec_time']],data),axis=1)
+    data = pd.concat((temp[['time']], data), axis=1)
+
+    data['time'] = temp['time']
+    data = data.set_index(['time'])
 
 
-    data['utc_org_rec_time'] = temp['utc_org_rec_time']
-    data['utc_org_rec_time'] = pd.to_datetime(data['utc_org_rec_time'])
-    data['utc_org_rec_time'] = pd.DatetimeIndex(data['utc_org_rec_time'])
+    data.columns = ['time', 'ACS', 'AQ', 'ART', 'CS', 'CV', 'EAT', 'HV', 'PI', 'RT', 'STATUS']
 
-    data.columns = cols
+    return data
 
-    #print data[:10]
-    #visualize_corr(data)
-    exit(0)
+def reconstruction(i,data,s,t):
 
-def visualize_corr(data):
+    cut = i
+    i = i+1
+    itr = s + datetime.timedelta(minutes=5)
+    temp = pd.DataFrame(columns=['time','value'])
 
-    #data = data.drop(['utc_org_rec_time','room_temperature_1710876'],axis=1)
-    cd = data.corr()
-    print "hello"
+    while itr < t:
+        temp.set_value(i, 'time', itr)
+        temp.set_value(i, 'value', 555555)
+        itr += datetime.timedelta(minutes=5)
+        i += 1
 
-    plt.matshow(data.corr())
-    plt.show()
+    data = pd.concat([data.ix[:cut], temp, data.ix[cut+1:]]).reset_index(drop=True)
 
+    return data
+
+def missing_values_filler(file, data):
+
+    delta = datetime.timedelta(minutes=6)
+    counter = 0
+    size = len(data)-1
+
+    while size > counter:
+        for i in range(len(data)):
+            counter += 1
+            if i > 0 and i < len(data) - 1:
+                temp_delta = data.iloc[i+1,0] - data.iloc[i,0]
+                if temp_delta > delta:
+                    data = reconstruction(i,data,data.iloc[i,0],data.iloc[i+1,0])
+                    size = len(data)-1
+                    counter = 0
+                    break
+    
+    return data
 
 def main():
 
-    X,y = read_file()
+    data = read_file()
+    print len(data)
 
 if __name__ == "__main__": main()
 
