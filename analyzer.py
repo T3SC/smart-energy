@@ -27,15 +27,14 @@ def read_file():
         temp['time'] = pd.DatetimeIndex(temp['time'])
         temp = missing_values_filler(file, temp)
         data = pd.concat((data, temp[['value']]), axis=1)
+        print "done!"
 
     data = pd.concat((temp[['time']], data), axis=1)
-
     data['time'] = temp['time']
-    data = data.set_index(['time'])
-
-
     data.columns = ['time', 'ACS', 'AQ', 'ART', 'CS', 'CV', 'EAT', 'HV', 'PI', 'RT', 'STATUS']
+    #data = data.set_index(['time'])
 
+    data.to_csv('data/sample/sample.csv', index=False)
     return data
 
 def reconstruction(i,data,s,t):
@@ -71,7 +70,7 @@ def missing_values_filler(file, data):
                     size = len(data)-1
                     counter = 0
                     break
-    
+
     return data
 
 def main():
