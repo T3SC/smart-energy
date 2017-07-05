@@ -82,7 +82,8 @@ def fetch_data(thread_name, base_url, url, meter_id, ts):
         page += 1
         new_request = False
 
-    df.to_csv('data/sample/' + thread_name+'_'+meter_id+ '.csv', index=False)
+    df = df.drop_duplicates()
+    df.to_csv('data/sample/tmp' + thread_name+'_'+meter_id+ '.csv', index=False)
     print "Total Values Fetched", counter
 
 
@@ -95,21 +96,32 @@ def main():
     """
 
     start_time = time.time()
-    meter_id_dict = {"1710876":"room_temperature",
-                     "1710877":"average_room_temperateure",
-                     "1710868":"air_quality",
-                     "1710869":"air_flow_cooling_setpoint",
-                     "1710874":"cooling_setpoint",
-                     "1710879":"cooling_val",
-                     "1710872":"running_mode",
-                     "1710878":"heating_valve",
-                     "1710873":"presence_information",
-                     "1710870":"exhaust_air_temperature"}
+    with open('data/named_sensors.txt','r') as f:
+        lines = f.readline()
+
+    meter_id_dict = {}
+
+    for l in lines:
+        x = l.split(',')
+        meter_id_dict[x[0]] = x[1]
+
+
+    # meter_id_dict = {"1710876":"room_temperature",
+    #                  "1710877":"average_room_temperateure",
+    #                  "1710868":"air_quality",
+    #                  "1710869":"air_flow_cooling_setpoint",
+    #                  "1710874":"cooling_setpoint",
+    #                  "1710879":"cooling_val",
+    #                  "1710872":"running_mode",
+    #                  "1710878":"heating_valve",
+    #                  "1710873":"presence_information",
+    #                  "1710870":"exhaust_air_temperature"}
 
     base_url = "https://eadvantage.siemens.com/remote/release"
-    ts = ("03/01/2017%2011:00:00", "06/23/2017%2023:59:59")
+    ts = ("03/01/2017%2011:00:00", "06/30/2017%2023:59:59")
 
     thread_list = []
+    
     for key,value in meter_id_dict.iteritems():
         url = url_builder(base_url, key, ts)
         t = Thread(target=fetch_data, args=(value, base_url, url, key, ts))
