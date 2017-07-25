@@ -48,7 +48,7 @@ def fetch_data(thread_name, base_url, url, meter_id, ts):
 
     page = 0
     counter = 0
-    df = pd.DataFrame(columns=('utc_org_rec_time','value'))
+    df = pd.DataFrame(columns=('time','value'))
     new_request = False
 
     while True:
@@ -61,7 +61,7 @@ def fetch_data(thread_name, base_url, url, meter_id, ts):
 
         if j['nextPage'] == None:
             ts_end = ts[1].replace("%20", " ")
-            time_last = datetime.datetime.strptime(str(df.iloc[len(df) - 1]['utc_org_rec_time']), "%m/%d/%Y %I:%M:%S %p")
+            time_last = datetime.datetime.strptime(str(df.iloc[len(df) - 1]['time']), "%m/%d/%Y %I:%M:%S %p")
             time_end = datetime.datetime.strptime(ts_end, "%m/%d/%Y %H:%M:%S") - datetime.timedelta(minutes=6)
             if time_end > time_last:
                 new_request = True
@@ -82,6 +82,8 @@ def fetch_data(thread_name, base_url, url, meter_id, ts):
         page += 1
         new_request = False
 
+    df['time'] = pd.to_datetime(df['time'])
+    df['time'] = pd.DatetimeIndex(df['time'])
     df = df.drop_duplicates()
     df.to_csv('data/sample/tmp' + thread_name+'_'+meter_id+ '.csv', index=False)
     print "Total Values Fetched", counter
@@ -97,11 +99,12 @@ def main():
 
     start_time = time.time()
     with open('data/named_sensors.txt','r') as f:
-        lines = f.readline()
+        lines = f.readlines()
 
     meter_id_dict = {}
 
     for l in lines:
+        l = l.rstrip()
         x = l.split(',')
         meter_id_dict[x[0]] = x[1]
 
@@ -118,18 +121,19 @@ def main():
     #                  "1710870":"exhaust_air_temperature"}
 
     base_url = "https://eadvantage.siemens.com/remote/release"
-    ts = ("03/01/2017%2011:00:00", "06/30/2017%2023:59:59")
+    ts = ("03/01/2017%2011:00:00", "03/01/2017%2023:59:59")
 
     thread_list = []
-    
     for key,value in meter_id_dict.iteritems():
         url = url_builder(base_url, key, ts)
-        t = Thread(target=fetch_data, args=(value, base_url, url, key, ts))
-        t.start()
-        thread_list.append(t)
+        fetch_data(value, base_url, url, key, ts)
+    #     t = Thread(target=fetch_data, args=(value, base_url, url, key, ts))
+    #     t.start()
+    #     thread_list.append(t)
+    #
+    # for t in thread_list:
+    #     t.join()
 
-    for t in thread_list:
-        t.join()
 
     print "--- %s Minutes ---" % ((time.time() - start_time) / 60)
 
