@@ -262,7 +262,11 @@ def url_builder(base_url,meter_id, ts):
            +ts[0]+"&utcEndTimestamp="+ts[1]
 
 # launch
-if __name__ == "__main__":
-    app.run()
+@app.route("/")
+def hello():
+    return "Hello World!"
 
-forecast()
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8080)
+
+
