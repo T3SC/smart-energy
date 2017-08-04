@@ -19,6 +19,7 @@ from keras.models import model_from_json
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
 import pymysql.cursors
+from sys import platform
 
 
 
@@ -168,10 +169,19 @@ def room_popularity():
     lookup = {'402187':"1710884", "402188":"1710873"}
     count_dict = {}
 
+    # unix_socket="/var/run/mysqld/mysqld.sock"
+    sock = "/tmp/mysql.sock"
+
+    if platform == 'linux' or platform == 'linux2':
+        sock = "/var/run/mysqld/mysqld.sock"
+    if platform == 'darwin':
+        sock = "/tmp/mysql.sock "
+
     connection = pymysql.connect(host='localhost',
                                  user='root',
                                  password='',
                                  db='smart_energy',
+                                 unix_socket = sock,
                                  cursorclass=pymysql.cursors.DictCursor)
     cursorObject = connection.cursor()
 
