@@ -15,6 +15,7 @@ import json
 import os
 import pymysql.cursors
 from sqlalchemy import create_engine
+from sys import platform
 
 
 
@@ -126,14 +127,15 @@ def create_tables():
     with open('data/hierarchy.json') as j:
         hierarchy = json.load(j)
 
-    engine = create_engine("mysql+pymysql://root:@localhost/smart_energy")
+    if platform == 'linux' or platform == 'linux2':
+        sock = "/var/run/mysqld/mysqld.sock"
+    if platform == 'darwin':
+        sock = "/tmp/mysql.sock "
 
-    connection = pymysql.connect(host='localhost',
-                                 user='root',
-                                 password='',
-                                 db='smart_energy',
-                                 # charset='utf8mb4',
-                                 cursorclass=pymysql.cursors.DictCursor)
+    engine_string =  "mysql+pymysql://root:@localhost/smart_energy" \
+                     "?host=localhost?port=3306?unix_socket="+sock
+    engine = create_engine(engine_string)
+
 
     p = str(os.path.dirname(os.path.abspath("__file__"))) + "/data/nodes/"
     n = os.walk(p)
