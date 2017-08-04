@@ -125,7 +125,7 @@ def create_tables():
     with open('data/hierarchy.json') as j:
         hierarchy = json.load(j)
 
-    engine = create_engine("mysql+mysqldb://root:@localhost/smart_energy")
+    engine = create_engine("mysql+pymysqldb://root:@localhost/smart_energy")
 
     connection = pymysql.connect(host='localhost',
                                  user='root',
