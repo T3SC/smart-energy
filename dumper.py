@@ -14,7 +14,7 @@ import pandas as pd
 import json
 import os
 import pymysql.cursors
-from sqlalchemy import create_eninge
+from sqlalchemy import create_engine
 
 
 
