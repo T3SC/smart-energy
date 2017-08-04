@@ -21,7 +21,6 @@ def url_builder(base_url,meter_id, ts):
     return base_url+"/meter/"+meter_id+"/readings?utcStartTimestamp="\
            +ts[0]+"&utcEndTimestamp="+ts[1]
 
-
 def fetch_data(base_url, url, meter_id, ts, path):
 
     """
@@ -122,8 +121,11 @@ def reconstruction(i,data,s,t):
     return data
 
 def create_tables():
+
     with open('data/hierarchy.json') as j:
         hierarchy = json.load(j)
+
+    engine = create_engine("mysql+mysqldb://root:@localhost/smart_energy")
 
     connection = pymysql.connect(host='localhost',
                                  user='root',
@@ -132,24 +134,36 @@ def create_tables():
                                  # charset='utf8mb4',
                                  cursorclass=pymysql.cursors.DictCursor)
 
-    cursorObject = connection.cursor()
-    queries = []
-    rooms = hierarchy['BuildingFloors'][0]['FloorRooms']
+    p = str(os.path.dirname(os.path.abspath("__file__"))) + "/data/nodes/"
+    n = os.walk(p)
+    for node in n:
+        nodes = node[1]
+        break
 
-    for room in rooms:
-        for node in room['RoomNodes']:
-            query = "CREATE TABLE t_"+str(node['NodeId'])+" (id int, TimeStamp DATETIME,"
-            for meter in node['NodeMeters']:
-                query = query+" c_"+str(meter['MeterId'])+" FLOAT,"
+    for node in nodes:
 
-            queries.append(query[:-1]+")")
+        full_path = p+str(node)
+        files = [f for f in os.listdir(full_path) if os.path.isfile(os.path.join(full_path, f))]
+        cols = ['time']
+        cols.extend(['c_'+x.split('.')[0] for x in files])
+        data = pd.DataFrame()
 
-    # Execute the sqlQuery
-    for query in queries:
-        cursorObject.execute(query)
+        for file in files:
+
+            temp = pd.read_csv(p+str(node)+"/" + file)
+            temp.columns = ['time', 'value']
+            temp['time'] = pd.to_datetime(temp['time'])
+            temp['time'] = pd.DatetimeIndex(temp['time'])
+            data = pd.concat((data, temp[['value']]), axis=1)
 
 
+        data = pd.concat((temp[['time']], data), axis=1)
+        data['time'] = temp['time']
 
+        data.columns = cols
+        # data = data.set_index(['time'])
+
+        data.to_sql(con=engine, name='t_'+str(node), if_exists='replace')
 
 
 def main():
@@ -170,10 +184,11 @@ def main():
             p = base_path+"/data/nodes/"+str(node['NodeId'])
             if not os.path.exists(p):
                 os.makedirs(p)
-            for meter in node['NodeMeters']:
-                url = url_builder(base_url, str(meter['MeterId']), ts)
-                fetch_data(base_url, url, str(meter['MeterId']), ts, p)
+                for meter in node['NodeMeters']:
+                    url = url_builder(base_url, str(meter['MeterId']), ts)
+                    fetch_data(base_url, url, str(meter['MeterId']), ts, p)
 
+    create_tables()
 
     print "--- %s Minutes ---" % ((time.time() - start_time) / 60)
 
