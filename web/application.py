@@ -111,49 +111,66 @@ def forecast():
 @app.route('/roomoccupancy', methods=['GET'])
 def room_occupancy():
 
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    room_name = request.args.get('room_name')
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        room_name = request.args.get('room_name')
 
-    with open('Temperature_Occupancy_Meters.json') as j:
-        rooms = json.load(j)
-
-
-    start_date += " 00:00:00"
-    end_date += " 23:59:00"
-
-    # implement dictionary for NodeId to MeterId
-    count_dict = {}
-
-    connection = pymysql.connect(host='localhost',
-                                 user='root',
-                                 password='',
-                                 db='smart_energy',
-                                 cursorclass=pymysql.cursors.DictCursor)
-    cursorObject = connection.cursor()
-
-    for room in rooms:
-        if room['RoomName'] == room_name:
-            break
-
-    for node in room['RoomNodes']:
-        node_id = node['NodeId']
-        for meter in node['OccupancyMeters']:
-            meter_id = meter['MeterId']
-            query = "SELECT count(c_"+meter_id+") as c_"+meter_id+ " " \
-                    "FROM t_"+node_id+" " \
-                    "WHERE (time > \""+start_date+"\") " \
-                    "AND (time < \""+end_date+"\") " \
-                    "AND (c_"+meter_id+" = 1)"
-
-            cursorObject.execute(query)
-            rows = cursorObject.fetchall()
-            count_dict[meter_id] = rows[0]['c_'+meter_id]
+        with open('Temperature_Occupancy_Meters.json') as k:
+            rooms = json.load(k,encoding='latin1')
 
 
-    count_dict = json.dumps(count_dict)
+        start_date += " 00:00:00"
+        end_date += " 23:59:00"
 
-    return count_dict
+        # implement dictionary for NodeId to MeterId
+        ts_counter = []
+
+        if platform == 'linux' or platform == 'linux2':
+            sock = "/var/run/mysqld/mysqld.sock"
+        if platform == 'darwin':
+            sock = "/tmp/mysql.sock"
+
+        connection = pymysql.connect(host='localhost',
+                                     user='root',
+                                     password='',
+                                     db='smart_energy',
+                                     unix_socket = sock,
+                                     cursorclass=pymysql.cursors.DictCursor)
+        cursorObject = connection.cursor()
+
+        for room in rooms:
+            if room['RoomName'] == room_name:
+                break
+
+        for node in room['RoomNodes']:
+            node_id = str(node['NodeId'])
+            for meter in node['OccupancyMeters']:
+                meter_id = str(meter['MeterId'])
+                query = "SELECT time " \
+                        "FROM t_"+node_id+" " \
+                        "WHERE (time > \""+start_date+"\") " \
+                        "AND (time < \""+end_date+"\") " \
+                        "AND (c_"+meter_id+" = 1)"
+
+                cursorObject.execute(query)
+                rows = cursorObject.fetchall()
+                # print rows
+                if len(rows) > 0:
+                    # print len(rows)
+                    temp = [str(x['time']) for x in rows]
+                    ts_counter = list(set().union(ts_counter, temp))
+
+        res = {'count':str(len(ts_counter))}
+        res = json.dumps(res)
+
+        return res
+
+    except Exception, e:
+        res = {"error":str(e)}
+        res = json.dumps(res)
+
+        return res
 
 
 @app.route('/roompopularity', methods=['GET'])
