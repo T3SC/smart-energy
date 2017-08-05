@@ -124,50 +124,52 @@ def reconstruction(i,data,s,t):
 
 def create_tables():
 
-    with open('data/hierarchy.json') as j:
-        hierarchy = json.load(j)
+    try:
+        with open('data/hierarchy.json') as j:
+            hierarchy = json.load(j)
 
-    if platform == 'linux' or platform == 'linux2':
-        sock = "/var/run/mysqld/mysqld.sock"
-    if platform == 'darwin':
-        sock = "/tmp/mysql.sock "
+        if platform == 'linux' or platform == 'linux2':
+            sock = "/var/run/mysqld/mysqld.sock"
+        if platform == 'darwin':
+            sock = "/tmp/mysql.sock "
 
-    engine_string =  "mysql+pymysql://root:@localhost/smart_energy" \
-                     "?host=localhost?port=3306?unix_socket="+sock
-    engine = create_engine(engine_string)
-
-
-    p = str(os.path.dirname(os.path.abspath("__file__"))) + "/data/nodes/"
-    n = os.walk(p)
-    for node in n:
-        nodes = node[1]
-        break
-
-    for node in nodes:
-
-        full_path = p+str(node)
-        files = [f for f in os.listdir(full_path) if os.path.isfile(os.path.join(full_path, f))]
-        cols = ['time']
-        cols.extend(['c_'+x.split('.')[0] for x in files])
-        data = pd.DataFrame()
-
-        for file in files:
-
-            temp = pd.read_csv(p+str(node)+"/" + file)
-            temp.columns = ['time', 'value']
-            temp['time'] = pd.to_datetime(temp['time'])
-            temp['time'] = pd.DatetimeIndex(temp['time'])
-            data = pd.concat((data, temp[['value']]), axis=1)
+        engine_string =  "mysql+pymysql://root:@localhost/smart_energy?host=localhost?port=3306?unix_socket="+sock
+        engine = create_engine(engine_string)
 
 
-        data = pd.concat((temp[['time']], data), axis=1)
-        data['time'] = temp['time']
+        p = str(os.path.dirname(os.path.abspath("__file__"))) + "/data/nodes/"
+        n = os.walk(p)
+        for node in n:
+            nodes = node[1]
+            break
 
-        data.columns = cols
-        # data = data.set_index(['time'])
+        for node in nodes:
 
-        data.to_sql(con=engine, name='t_'+str(node), if_exists='replace')
+            full_path = p+str(node)
+            files = [f for f in os.listdir(full_path) if os.path.isfile(os.path.join(full_path, f))]
+            cols = ['time']
+            cols.extend(['c_'+x.split('.')[0] for x in files])
+            data = pd.DataFrame()
 
+            for file in files:
+
+                temp = pd.read_csv(p+str(node)+"/" + file)
+                temp.columns = ['time', 'value']
+                temp['time'] = pd.to_datetime(temp['time'])
+                temp['time'] = pd.DatetimeIndex(temp['time'])
+                data = pd.concat((data, temp[['value']]), axis=1)
+
+
+            data = pd.concat((temp[['time']], data), axis=1)
+            data['time'] = temp['time']
+
+            data.columns = cols
+            # data = data.set_index(['time'])
+
+            data.to_sql(con=engine, name='t_'+str(node), if_exists='replace')
+
+    except Exception, e:
+        print str(e)
 
 def main():
 
