@@ -133,7 +133,7 @@ def create_tables():
         if platform == 'darwin':
             sock = "/tmp/mysql.sock "
 
-        engine_string =  "mysql+pymysql://root:@localhost/smart_energy?host=localhost?port=3306?unix_socket="+sock
+        engine_string =  "mysql+pymysql://root:@localhost/smart_energy?unix_socket="+sock
         engine = create_engine(engine_string)
 
 
