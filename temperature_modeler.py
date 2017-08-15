@@ -205,6 +205,6 @@ def main():
                 print room['RoomName']
 
         meter_count = 0
-        agg = np.zeros(shape=(40320,))
+        agg = np.zeros(shape=(rows,))
 
 if __name__ == "__main__": main()
