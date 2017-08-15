@@ -136,7 +136,6 @@ def split_test_train(ts_univariate, split, look_back):
 
     return train_X, train_y, test_X, test_y
 
-
 def main():
 
     np.random.seed(7)

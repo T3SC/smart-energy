@@ -48,6 +48,7 @@ def index():
 def forecast():
 
 
+    room_name = request.args.get('room_name')
     meter_id = request.args.get('meter_id')
 
     base_url = "https://eadvantage.siemens.com/remote/release"
@@ -81,12 +82,12 @@ def forecast():
 
 
     # load json and create model
-    json_file = open('models/model.json', 'r')
+    json_file = open("models/"+room_name+".json", 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     loaded_model = model_from_json(loaded_model_json)
     # load weights into new model
-    loaded_model.load_weights("models/model.h5")
+    loaded_model.load_weights("models/"+room_name+".h5")
     print("Loaded model from disk")
 
     # compiling model and making predictions
