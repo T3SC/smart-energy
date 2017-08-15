@@ -47,28 +47,86 @@ def index():
 @app.route('/forecast', methods=['GET'])
 def forecast():
 
-
     room_name = request.args.get('room_name')
-    meter_id = request.args.get('meter_id')
 
-    base_url = "https://eadvantage.siemens.com/remote/release"
-    tz = pytz.timezone('Europe/Helsinki')
-    current_time = datetime.datetime.now(tz)
 
-    start_time = current_time - datetime.timedelta(hours=28)
-    st = start_time.strftime("%m/%d/%Y %H:%M:%S")
-    ct = current_time.strftime("%m/%d/%Y %H:%M:%S")
-    ts = (st,ct)
+    try:
+        # load json and create model
+        json_file = open("models/" + room_name + ".json", 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        loaded_model = model_from_json(loaded_model_json)
+        # load weights into new model
+        loaded_model.load_weights("models/" + room_name + ".h5")
+        print("Loaded model from disk")
+    except Exception, e:
+        return ("room not found")
 
-    url = url_builder(base_url,meter_id,ts)
-    data = fetch_data(url, meter_id, ts)
-    data['time'] = data['time'].apply(lambda x: x.strftime("%m-%d-%Y %H:%M:%S"))
+    if platform == 'linux' or platform == 'linux2':
+        sock = "/var/run/mysqld/mysqld.sock"
+    if platform == 'darwin':
+        sock = "/tmp/mysql.sock"
 
-    avg = data['value'].mean()
-    temperature = data.iloc[-288:,1]
-    temperature[np.isnan(temperature)] = avg
+    connection = pymysql.connect(host='localhost',
+                                 user='root',
+                                 password='',
+                                 db='smart_energy',
+                                 unix_socket=sock,
+                                 cursorclass=pymysql.cursors.DictCursor)
+    cursorObject = connection.cursor()
+
+    query = "SELECT COUNT(*) FROM t_402176"
+    cursorObject.execute(query)
+    rows = cursorObject.fetchall()
+    rows = int(rows[0].popitem()[1])
+
+    # nodes with sufficient data
+    nodes = ['402176', '402177', '402178', '402179', '402180', '402181', '402182', '402183', '402184',
+             '402185', '402187', '402188', '496908', '496909', '496910', '496912', '496913']
+
+    # nodes with in sufficient data
+    non_nodes = ['491179', '491180', '491181', '491182', '491183', '491184', '491185', '496911']
+
+    with open('Temperature_Occupancy_Meters.json') as k:
+        rooms = json.load(k,encoding='latin1')
+
+    meter_count = 0
+    agg = np.zeros(shape=(288,))
+
+    for room in rooms: # Iterating through nodes
+        if room['RoomName'] == room_name:
+            break
+
+    for node in room['RoomNodes']:  # Iterating through room nodes
+        if str(node['NodeId']) not in non_nodes:  # skipping nodes with insufficient data
+            for meter in node['TemperatureMeters']:
+
+                meter_id = str(meter['MeterId'])
+                base_url = "https://eadvantage.siemens.com/remote/release"
+                tz = pytz.timezone('Europe/Helsinki')
+                current_time = datetime.datetime.now(tz)
+
+                start_time = current_time - datetime.timedelta(hours=28)
+                st = start_time.strftime("%m/%d/%Y %H:%M:%S")
+                ct = current_time.strftime("%m/%d/%Y %H:%M:%S")
+                ts = (st,ct)
+
+                url = url_builder(base_url,meter_id,ts)
+                data = fetch_data(url, meter_id, ts)
+                data['time'] = data['time'].apply(lambda x: x.strftime("%m-%d-%Y %H:%M:%S"))
+
+                temperature = data.iloc[-288:,1]
+
+                if np.count_nonzero(temperature):
+                    avg = data['value'].mean()
+                    temperature[np.isnan(temperature)] = avg
+                    agg += temperature
+                    meter_count += 1
+
+    avg_temperature = agg/float(meter_count)
+
     scaler = MinMaxScaler(feature_range=(0, 1))
-    temperature = scaler.fit_transform(temperature)
+    avg_temperature = scaler.fit_transform(avg_temperature)
 
     X = np.zeros(shape=(288, 288))
     for i in range(len(temperature)):
@@ -80,30 +138,20 @@ def forecast():
 
     X = np.reshape(X, (X.shape[0], 1, X.shape[1]))
 
-
-    # load json and create model
-    json_file = open("models/"+room_name+".json", 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    loaded_model = model_from_json(loaded_model_json)
-    # load weights into new model
-    loaded_model.load_weights("models/"+room_name+".h5")
-    print("Loaded model from disk")
-
     # compiling model and making predictions
     loaded_model.compile(loss='mean_squared_error', optimizer='rmsprop')
 
-    prediction = loaded_model.predict(X, batch_size=288)
-    prediction = scaler.inverse_transform(prediction)
-    p = prediction[0, :]
+    forecast = loaded_model.predict(X, batch_size=288)
+    forecast = scaler.inverse_transform(forecast)
+    f = forecast[0, :]
     base_time = current_time - datetime.timedelta(minutes=current_time.minute % 5, seconds=current_time.second)
 
     temp_time = base_time
     d = dict()
 
-    for i in range(len(prediction)):
+    for i in range(len(forecast)):
         temp_time += datetime.timedelta(minutes=5)
-        d[temp_time.strftime("%m/%d/%Y %H:%M:%S")] = str(p[i])
+        d[temp_time.strftime("%m/%d/%Y %H:%M:%S")] = str(f[i])
 
     d = json.dumps(d)
 
