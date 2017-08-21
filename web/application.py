@@ -151,7 +151,7 @@ def forecast():
 
     for i in range(len(forecast)):
         temp_time += datetime.timedelta(minutes=5)
-        d[temp_time.strftime("%m/%d/%Y %H:%M:%S")] = str(f[i])
+        d[temp_time.strftime("%m/%d/%Y %H:%M:%S")] = "{:.2f}".format(f[i])
 
     d = json.dumps(d)
 
