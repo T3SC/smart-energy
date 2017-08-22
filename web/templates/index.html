@@ -4,13 +4,17 @@
 <title>24-Hour Weather Prediciton</title>
     <script>
         function temperature(room){
+            var l = document.getElementsByClassName("loading")[0];
+            l.style.display = "block";
             url = '/forecast?room_name='+room
             fetch(url, {
 	        method: 'get'
             }).then(function(response) {
                 return response.json();
             }).then(function(r){
-                var hourly = []
+
+
+
                 var s = "Next 24-hour Temperature Forecast \n\n"
                 k = Object.keys(r).sort();
 
@@ -20,58 +24,69 @@
 
                     }
                 }
+
                 alert(s);
+                var l = document.getElementsByClassName("loading")[0];
+                l.style.display = "none";
 
             })
             .catch(function(err) {
 	        // Error :(
             });
         }
-    </script>>
-
-</head>
-<body>
-<style type="text/css">
-.bgimg {
-    background-image: url('/static/kampusklubi.jpg');
-    background-size: 1200px 720px;
-    width:1200px;
-    height: 720px;
-    float:left;
-}
-.menu{
-    width: 130px;
-    height: 260px;
-    position: relative;
-    top: 405px;
-    right: 0px;
-    float: right;
-}
-.box{    width: 130px;
-    height: 32px;
-    position: relative;
-    float: left;
-    }
-.A510{}
-.A515{}
-.A522{}
-.A523{}
-.A526{}
-.A527{}
-.A529{}
+    </script>
+    <style type="text/css">
+        .bgimg {
+            background-image: url('/static/kampusklubi.jpg');
+            background-size: 1200px 720px;
+            width:1200px;
+            height: 720px;
+            float:left;
+        }
+        .menu{
+            width: 130px;
+            height: 260px;
+            position: relative;
+            top: 405px;
+            right: 0px;
+            float: right;
+        }
+        .box{    width: 130px;
+            height: 32px;
+            position: relative;
+            float: left;
+            }
+        .A510{}
+        .A515{}
+        .A522{}
+        .A523{}
+        .A526{}
+        .A527{}
+        .A529{}
+        .loading{
+            width: 225px;
+            margin: 0 auto;
+            display: none;
+        }
 
 </style>
-<div class="bgimg" >
-    <div class ="menu">
-        <div class ="A510 box" onclick="temperature('A510')"></div>
-        <div class ="A515 box" onclick="temperature('A515')"></div>
-        <div class ="A522 box" onclick="temperature('A522')"></div>
-        <div class ="A523 box" onclick="temperature('A523')"></div>
-        <div class ="A526 box" onclick="temperature('A526')"></div>
-        <div class ="A527 box" onclick="temperature('A527')"></div>
-        <div class ="A529 box" onclick="temperature('A529')"></div>
-    </div>>
-</div>
+</head>
+<body>
+
+    <div class="bgimg">
+        <div class="loading">
+            <img src="/static/loading.gif" alt="Mountain View">
+        </div>
+        <div class ="menu">
+            <div class ="A510 box" onclick="temperature('A510')"></div>
+            <div class ="A515 box" onclick="temperature('A515')"></div>
+            <div class ="A522 box" onclick="temperature('A522')"></div>
+            <div class ="A523 box" onclick="temperature('A523')"></div>
+            <div class ="A526 box" onclick="temperature('A526')"></div>
+            <div class ="A527 box" onclick="temperature('A527')"></div>
+            <div class ="A529 box" onclick="temperature('A529')"></div>
+        </div>
+    </div>
 
 </body>
 </html>
