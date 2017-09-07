@@ -32,8 +32,13 @@ def fetch_data(base_url, url, meter_id, ts, path):
     """
 
     print meter_id
-    username = "AkhtarTU"
-    password = "BQYQELn7$!9vN]=0"
+
+    with open('credentials.txt') as f:
+        content = f.readlines()
+
+    content = [x.strip() for x in content]
+    username = content[0]
+    password = content[1]
     b64 = base64.b64encode(username + ":" + password)
     token = "Basic " + b64
 
