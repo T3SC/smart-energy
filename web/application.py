@@ -2,22 +2,18 @@
 # -*- coding: utf-8 -*-
 """
 @author: omayr
-@description: A light weight service layer for temperate predicitons
+@description: A light weight service layer for temperature predicitons
 """
 
 
 import os
 from flask import Flask, render_template, send_from_directory, request
-import pytz, datetime, time
-import json
+import pytz, datetime
 import numpy as np
 import pandas as pd
-import base64, urllib2, json, requests
-from keras.models import Sequential
-from keras.layers import Dense
+import base64, json, requests
 from keras.models import model_from_json
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error
 import pymysql.cursors
 from sys import platform
 
