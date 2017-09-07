@@ -13,7 +13,6 @@ import base64, urllib2, json, requests
 import pandas as pd
 import json
 import os
-import pymysql.cursors
 from sqlalchemy import create_engine
 from sys import platform
 
@@ -54,8 +53,6 @@ def fetch_data(base_url, url, meter_id, ts, path):
 
         while True:
 
-            print "***",str(meter_id)+"-"+str(page)
-
             for items in j['items']:
                 df.loc[counter] = [items['utcOrgRectime'],items['value']]
                 counter += 1
@@ -89,7 +86,6 @@ def fetch_data(base_url, url, meter_id, ts, path):
         df = missing_values_filler(df)
         df = df.drop_duplicates()
         df.to_csv(path+"/"+meter_id+ '.csv', index=False)
-        print "Total Values Fetched", counter
 
 def missing_values_filler(data):
 

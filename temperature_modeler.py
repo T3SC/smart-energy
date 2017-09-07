@@ -2,26 +2,18 @@
 # -*- coding: utf-8 -*-
 """
 @author: omayr
-@description: Training models for temperature predictions of KampusKlaubi
+@description: Training models for temperature predictions of KampusKlaubi rooms with sensors
 """
 
 import pandas as pd
 import numpy as np
-import time, datetime
-from os import listdir
-from os import path
-import matplotlib.pyplot as plt
 import math
 from keras.models import Sequential
-from keras.layers.wrappers import TimeDistributed
 from keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
-from keras.layers.convolutional import Conv1D, MaxPooling1D
-from keras.layers.core import Dense, Activation, Dropout, RepeatVector
-from keras.layers.advanced_activations import PReLU
+from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.normalization import BatchNormalization
-from sklearn.externals import joblib
 from sys import platform
 import pymysql.cursors
 import json
@@ -103,10 +95,6 @@ def modeling(univariate, look_back, room_name):
     model.add(Dense(look_back))  # train_y.shape[1]
     model.add(Activation('relu'))
 
-    # model.add(RepeatVector(look_back))
-    # model.add(LSTM(look_back, stateful=True))
-    # model.add(Dense(look_back))
-
     model.compile(loss='mean_squared_error', optimizer='rmsprop')
 
     # fit network
@@ -144,7 +132,6 @@ def modeling(univariate, look_back, room_name):
     print room_name
     print('Train Score: %.4f RMSE' % (np.mean(train_score)))
     print('Test Score: %.4f RMSE' % (np.mean(test_score)))
-
 
 def main():
 

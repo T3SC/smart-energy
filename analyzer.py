@@ -8,21 +8,17 @@
 
 import pandas as pd
 import numpy as np
-import time, datetime
+import datetime
 from os import listdir
 from os import path
 import matplotlib.pyplot as plt
 import math
 from keras.models import Sequential
-from keras.layers.wrappers import TimeDistributed
 from keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
-from keras.layers.convolutional import Conv1D, MaxPooling1D
-from keras.layers.core import Dense, Activation, Dropout, RepeatVector
-from keras.layers.advanced_activations import PReLU
+from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.normalization import BatchNormalization
-from sklearn.externals import joblib
 
 def read_file():
 
@@ -40,12 +36,10 @@ def read_file():
         temp = temp.drop_duplicates()
         temp = missing_values_filler(file, temp)
         data = pd.concat((data, temp[['value']]), axis=1)
-        print "done!"
 
     data = pd.concat((temp[['time']], data), axis=1)
     data['time'] = temp['time']
     data.columns = ['time', 'ACS', 'AQ', 'ART', 'CS', 'CV', 'EAT', 'HV', 'PI', 'RT', 'STATUS']
-    #data = data.set_index(['time'])
 
     data.to_csv('data/sample/sample.csv', index=False)
     return data
@@ -84,9 +78,6 @@ def missing_values_filler(file, data):
                     size = len(data)-1
                     counter = 0
                     break
-
-    print file
-    print len(data)
 
     return data
 
@@ -136,6 +127,7 @@ def split_test_train(ts_univariate, split, look_back):
 
     return train_X, train_y, test_X, test_y
 
+
 def main():
 
     np.random.seed(7)
@@ -151,9 +143,6 @@ def main():
     # Filling missing values.
     avg = data['RT'].mean()
     univariate[np.isnan(univariate)] = avg
-    #univariate[np.isnan(univariate)] = 0
-
-    #univariate = univariate.astype('float32')
     scaler = MinMaxScaler(feature_range=(0, 1))
     univariate = scaler.fit_transform(univariate)
     univariate = univariate.tolist()
@@ -180,10 +169,6 @@ def main():
     model.add(Dense(look_back)) #train_y.shape[1]
     model.add(Activation('relu'))
 
-    #model.add(RepeatVector(look_back))
-    #model.add(LSTM(look_back, stateful=True))
-    #model.add(Dense(look_back))
-
     model.compile(loss='mean_squared_error', optimizer='rmsprop')
 
     # fit network
@@ -195,6 +180,7 @@ def main():
     model_json = model.to_json()
     with open("data/model.json", "w") as json_file:
         json_file.write(model_json)
+
     # serialize weights to HDF5
     model.save_weights("data/model.h5")
     print("Saved model to disk")
@@ -212,6 +198,8 @@ def main():
     for i in range(0,test_y.shape[1]):
         print test_y[len(test_y)-1,i], testPredict[len(testPredict)-1,i]
 
+    '''
+    # Plotting data
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111)
     ax.plot(test_y[len(test_y)-1,:], 'g', label='Actual Temperature')
@@ -219,7 +207,7 @@ def main():
     plt.title('Actual Room Temperature vs. Predicted Room Temperature')
     plt.axis([0, 300, 20, 25])
     ax.legend(loc='best')
-
+    '''
 
     # calculate root mean squared error
     train_score, test_score = [], []
@@ -229,9 +217,8 @@ def main():
     for i in range(0, len(test_y)):
         test_score.append(math.sqrt(mean_squared_error(test_y[i,:], testPredict[i,:])))
 
-    print('Train Score: %.4f RMSE' % (np.mean(train_score)))
-    print('Test Score: %.4f RMSE' % (np.mean(test_score)))
-    plt.show()
+    #print('Train Score: %.4f RMSE' % (np.mean(train_score)))
+    #print('Test Score: %.4f RMSE' % (np.mean(test_score)))
 
 
 if __name__ == "__main__": main()
